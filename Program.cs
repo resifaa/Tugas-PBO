@@ -1,141 +1,227 @@
 ﻿using System;
-using Npgsql;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
-using System.Configuration;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Data.SQLite;
 
-namespace TugasSelect
+namespace TugasRefOut
 {
-    class pbotm
+    class Database
     {
-        private static NpgsqlConnection koneksi()
-        {
-            return new NpgsqlConnection(@"server=localhost;port=5432;user id=postgres;password=19042003;database=pbo;");
-        }
-        public bool ExecuteQuery(out bool info)
+        public SQLiteConnection conn;
 
+        public Database()
         {
-            info = true;
-            try
+            conn = new SQLiteConnection("Data Source=passbyref.sqlite3");
+        }
+        public void openConn()
+        {
+            if (conn.State != System.Data.ConnectionState.Open)
             {
+                conn.Open();
+            }
+        }
 
-                NpgsqlConnection con = koneksi();
-                con.Open();
-                string sql = "select * from jenis_cucian";
-                NpgsqlCommand cmd = new NpgsqlCommand(sql, con);
-                NpgsqlDataAdapter da = new NpgsqlDataAdapter(cmd);
-                DataTable dt = new DataTable();
-                da.Fill(dt);
-                return info;
-            }
-            catch (Exception)
-            {
-                info = false;
-                return info;
-            }
-
-        }
-    }
-    class operasi
-    {
-        private static NpgsqlConnection koneksi()
+        public void closeConn()
         {
-            return new NpgsqlConnection(@"server=localhost;port=5432;user id=postgres;password=19042003;database=pbo;");
-        }
-        public bool insert(ref bool info)
-        {
-            try
+            if (conn.State != System.Data.ConnectionState.Closed)
             {
-                NpgsqlConnection con = koneksi();
-                con.Open();
-                NpgsqlCommand cmd = new NpgsqlCommand("insert into karyawan(id_categorie,jenis,deskripsi) values('1','cuci basah','menggunakan air')", con);
-                cmd.ExecuteNonQuery();
-                cmd.Dispose();
-                con.Close();
-                info = true;
-                return info;
-            }
-            catch (Exception)
-            {
-                return info;
-            }
-        }
-        public bool update(ref bool info)
-        {
-            try
-            {
-                NpgsqlConnection con = koneksi();
-                con.Open();
-                NpgsqlCommand cmd = new NpgsqlCommand("update jenis_cucian set jenis = cuci kering, deskripsi = menggunakan larutan khusus where id_categorie = 1", con);
-                cmd.ExecuteNonQuery();
-                cmd.Dispose();
-                con.Close();
-                info = true;
-                return info;
-            }
-            catch (Exception)
-            {
-                return info;
-            }
-        }
-        public bool Delete(ref bool info)
-        {
-            try
-            {
-                NpgsqlConnection con = koneksi();
-                con.Open();
-                NpgsqlCommand cmd = new NpgsqlCommand("delete from karyawan where id_categorie = 1", con);
-                cmd.ExecuteNonQuery();
-                cmd.Dispose();
-                con.Close();
-                info = true;
-                return info;
-            }
-            catch (Exception)
-            {
-                return info;
+                conn.Close();
             }
         }
     }
-    class program_utama
+    public partial class Form1 : Form
     {
-        static void Main(string[] args)
+        private int genderid { get; set; }
+        public Form1()
         {
-            bool info;
-            bool ingfo = false;
-            pbotm dat = new pbotm();
-            operasi op = new operasi();
-            if (dat.ExecuteQuery(out info) == true)
+            InitializeComponent();
+            Database db = new Database();
+            string query = "SELECT class_name FROM class";
+            db.openConn();
+            SQLiteCommand cmd = new SQLiteCommand(query, db.conn);
+            SQLiteDataReader DR = cmd.ExecuteReader();
+
+            while (DR.Read())
             {
-                Console.WriteLine("cucian masuk");
+                comboBox1.Items.Add(DR["class_name"]);
+
             }
-            else if (dat.ExecuteQuery(out info) == false)
+        }
+        private void button1_Click(object sender, EventArgs e)
+        {
+            DataTable dt;
+            ExecReader(out dt, $"SELECT stud_id, stud_name, gender_type, class_name FROM student INNER JOIN gender ON gender_id = stud_gender_id INNER JOIN class ON class_id = stud_class_id WHERE stud_name = '{TextInsert.Text}' OR stud_name LIKE '%{TextInsert.Text}%';");
+        }
+        private void TextInsert_TextChanged(object sender, EventArgs e)
+        {
+            if (!(string.IsNullOrEmpty(TextInsert.Text) || TextInsert.Text == " "))
             {
-                Console.WriteLine("cucian tidak masuk");
+                radioButton1.Enabled = true;
+                radioButton2.Enabled = true;
             }
-            if (op.insert(ref ingfo) == true)
+            else
             {
-                Console.WriteLine("insert sukses");
+                radioButton1.Enabled = false;
+                radioButton1.Checked = false;
+                radioButton2.Enabled = false;
+                radioButton2.Checked = false;
             }
-            else if (op.insert(ref ingfo) == false)
+        }
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+        private void radioButton2_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!(radioButton2.Checked))
             {
-                Console.WriteLine("insert gagal");
+                comboBox1.Enabled = false;
             }
-            if (op.update(ref ingfo) == true)
+            else
             {
-                Console.WriteLine("update sukses");
+                genderid = 2;
+                comboBox1.Enabled = true;
             }
-            else if (op.update(ref ingfo) == false)
+
+        }
+        private void radioButton1_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!(radioButton1.Checked))
             {
-                Console.WriteLine("update gagal");
+                comboBox1.Enabled = false;
             }
-            if (op.Delete(ref ingfo) == true)
+            else
             {
-                Console.WriteLine("delete sukses");
+                genderid = 1;
+                comboBox1.Enabled = true;
+
             }
-            else if (op.Delete(ref ingfo) == false)
+        }
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+        }
+        private void button2_Click(object sender, EventArgs e)
+        {
+            DataTable dt = new DataTable();
+            label2.Visible = false;
+            label2.Font = new Font(label2.Font, FontStyle.Bold);
+            if (ExecQuery(ref dt, $"INSERT INTO student(stud_id, stud_name, stud_gender_id, stud_class_id) VALUES ((SELECT max(stud_id) FROM student) + 1, '{TextInsert.Text}', {genderid}, (SELECT class_id FROM class WHERE class_name = '{comboBox1.Text}'));") == true)
             {
-                Console.WriteLine("delete gagal");
+                label2.ForeColor = Color.Green;
+                label2.Visible = true;
+                label2.Text = "TRUE";
             }
+            else
+            {
+                label2.ForeColor = Color.Red;
+                label2.Visible = true;
+                label2.Text = "FALSE";
+            }
+
+        }
+        private void button3_Click(object sender, EventArgs e)
+        {
+            DataTable dt = new DataTable();
+            label2.Visible = false;
+            label2.Font = new Font(label2.Font, FontStyle.Bold);
+            if (ExecQuery(ref dt, $"UPDATE student SET stud_name = '{textBox1.Text}' WHERE stud_name = '{TextInsert.Text}';") == true)
+            {
+                label2.ForeColor = Color.Green;
+                label2.Visible = true;
+                label2.Text = "TRUE";
+            }
+            else
+            {
+                label2.ForeColor = Color.Red;
+                label2.Visible = true;
+                label2.Text = "FALSE";
+            }
+        }
+        private void button4_Click(object sender, EventArgs e)
+        {
+            DataTable dt = new DataTable();
+            label2.Visible = false;
+            label2.Font = new Font(label2.Font, FontStyle.Bold);
+            if (ExecQuery(ref dt, $"DELETE FROM student WHERE stud_name = '{TextInsert.Text}';") == true)
+            {
+                label2.ForeColor = Color.Green;
+                label2.Visible = true;
+                label2.Text = "TRUE";
+            }
+            else
+            {
+                label2.ForeColor = Color.Red;
+                label2.Visible = true;
+                label2.Text = "FALSE";
+            }
+        }
+        private void dataBox_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            DataTable dt;
+            ExecReader(out dt, "SELECT stud_id, stud_name, gender_type, class_name FROM student INNER JOIN gender ON gender_id = stud_gender_id INNER JOIN class ON class_id = stud_class_id;");
+        }
+        public bool ExecReader(out DataTable dt, string query)
+        {
+            Database db = new Database();
+            db.openConn();
+            SQLiteCommand cmd = new SQLiteCommand(query, db.conn);
+            SQLiteDataReader reader = cmd.ExecuteReader();
+            dt = new DataTable();
+            dt.Load(reader);
+            dataBox.DataSource = dt;
+            db.closeConn();
+            cmd.Dispose();
+            return true;
+        }
+        public bool ExecQuery(ref DataTable dt, string query)
+        {
+            Database db = new Database();
+            db.openConn();
+            SQLiteCommand cmd = new SQLiteCommand(query, db.conn);
+            if (string.IsNullOrEmpty(TextInsert.Text) || TextInsert.Text == " ")
+            {
+                return false;
+            }
+            else
+            {
+                cmd.ExecuteNonQuery();
+                ExecReader(out dt, "SELECT stud_id, stud_name, gender_type, class_name FROM student INNER JOIN gender ON gender_id = stud_gender_id INNER JOIN class ON class_id = stud_class_id;");
+                return true;
+            }
+            db.closeConn();
+            cmd.Dispose();
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+            if (!(string.IsNullOrEmpty(textBox1.Text) || textBox1.Text == " "))
+            {
+                button3.Enabled = true;
+            }
+            else
+            {
+                button3.Enabled = false;
+            }
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
